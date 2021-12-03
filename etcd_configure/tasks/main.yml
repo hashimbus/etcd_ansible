@@ -1,0 +1,37 @@
+---
+- name: hosts
+  lineinfile:
+      dest: /etc/hosts
+      regexp: "^{{ item.ip }}"
+      line: "{{ item.ip }} {{ item.hostname }}"
+      state: present
+  loop: "{{ etcd_hosts }}"
+
+- name: localhost
+  lineinfile:
+       dest: /etc/hosts
+       regexp: "^127.0.1.1"
+       line: "127.0.1.1 {{ ansible_hostname }}"
+       state: present
+
+- name: Firewall
+  block:
+    - name: "22"
+      ufw:
+        rule: allow
+        port: ssh
+        src: "{{ item }}"
+      loop: "{{ ssh_address }}"
+
+    - name: "etcd"
+      ufw:
+        rule: allow
+        port: '2379:2380'
+        src: "{{ item.ip }}"
+        proto: tcp
+        state: enabled
+      loop:  "{{ etcd_hosts }}"
+  tags: 
+    - firewall
+
+

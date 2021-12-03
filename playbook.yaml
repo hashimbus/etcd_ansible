@@ -1,0 +1,8 @@
+---
+- name: Role ETCD
+  hosts: all
+  become: yes
+  roles:
+     - etcd
+     - etcd_configure
+     - etcd_ssh
