@@ -29,7 +29,7 @@ etcd_hosts:
         - hostname: 
           ip: 
           
-Role create directory /tmp/.artifacts/ on localhost
-Create and copy certs (crt+key) ca and hosts
-Copy certs on hosts
+Role create directory /tmp/.artifacts/ on localhost.
+Create and copy certs (crt+key) ca and hosts.
+Copy certs on hosts.
 (inventory_hostnames must be like match names hosts)
