@@ -1,0 +1,8 @@
+---
+etcd_hosts:
+        - hostname: 'etcd01'
+          ip: x
+        - hostname: 'etcd02'
+          ip: x
+        - hostname: 'etcd03'
+          ip: x

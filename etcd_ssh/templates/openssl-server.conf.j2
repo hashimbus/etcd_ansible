@@ -1,0 +1,19 @@
+[req]
+default_bits            = 2048
+default_md              = sha256
+distinguished_name      = req_distinguished_name
+attributes              = req_attributes
+req_extensions = v3_req
+[ req_distinguished_name ]
+[ req_attributes ]
+[ v3_req ]
+basicConstraints = critical,CA:true
+keyUsage = critical,Digital Signature, Key Encipherment, Certificate Sign
+extendedKeyUsage = TLS Web Server Authentication, TLS Web Client Authentication
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = {{ item.hostname }}
+DNS.2 = localhost
+IP.1 = {{ item.ip }}
+IP.2 = 127.0.0.1
