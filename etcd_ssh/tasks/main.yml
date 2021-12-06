@@ -1,0 +1,140 @@
+---
+- name: "Create ./artifacts directoryi on localhost"
+  become: False
+  file:
+     path: /tmp/.artifacts
+     state: directory
+  delegate_to: localhost
+
+- name: "Generate Priv key for CA"
+  become: False
+  openssl_privatekey:
+        path: "/tmp/.artifacts/ca.key"
+        type: RSA
+        size: 2048
+        state: present
+  delegate_to: localhost
+
+- name: "Generate Priv key for servers"
+  become: False
+  openssl_privatekey:
+        path: "/tmp/.artifacts/{{ item.hostname }}.key"
+        type: RSA
+        size: 2048
+        state: present
+  loop: "{{ etcd_hosts }}"
+  delegate_to: localhost
+
+
+- name: "copy files req"
+  become: False
+  copy:
+        src: "{{ item }}"
+        dest: "/tmp/.artifacts/{{ item }}"
+  loop:
+     - ca.srl
+     - openssl-ca.conf
+  delegate_to: localhost
+
+- name: "Create and copy server req"
+  become: False
+  template:
+          src: openssl-server.conf.j2
+          dest: "/tmp/.artifacts/{{ item.hostname }}.openssl-server.conf"
+  loop: "{{ etcd_hosts }}"
+  delegate_to: localhost
+
+- name: "CREATE request"
+  become: False
+  shell: openssl req -new -key /tmp/.artifacts/ca.key -out /tmp/.artifacts/ca.csr -subj "/CN=etcd" -config /tmp/.artifacts/openssl-ca.conf  -extensions v3_req
+  delegate_to: localhost
+
+- name: "CREATE request srv"
+  become: False
+  shell: openssl req -new -key "/tmp/.artifacts/{{ item.hostname }}.key" -out "/tmp/.artifacts/{{ item.hostname }}.csr" -subj "/CN=etcd" -config "/tmp/.artifacts/{{ item.hostname }}.openssl-server.conf"  -extensions v3_req
+  loop: "{{ etcd_hosts }}"
+  delegate_to: localhost
+
+- name: "CREATE openkey"
+  become: False
+  shell: openssl x509 -req -in "/tmp/.artifacts/ca.csr" -out "/tmp/.artifacts/ca.crt" -signkey "/tmp/.artifacts/ca.key" -days 1095  -extfile "/tmp/.artifacts/openssl-ca.conf" -extensions v3_req
+  delegate_to: localhost
+
+- name: "CREATE openkey srv"
+  become: False
+  shell: openssl x509 -req -in "/tmp/.artifacts/{{ item.hostname }}.csr" -out "/tmp/.artifacts/{{ item.hostname }}.crt" -CA "/tmp/.artifacts/ca.crt" -CAkey "/tmp/.artifacts/ca.key" -days 1095 -extfile "/tmp/.artifacts/{{ item.hostname }}.openssl-server.conf" -extensions v3_req
+  loop: "{{ etcd_hosts }}"
+  delegate_to: localhost
+
+- name: "CReate dir"
+  file:
+     path: '/etc/etcd/ssl/'
+     owner: etcd
+     group: etcd
+     mode: 0700
+     state: directory
+
+- name: "Copy certs"
+  copy:
+    src: "/tmp/.artifacts/{{ item }}"
+    remote_src: False
+    dest: /etc/etcd/ssl/{{ item }}
+    owner: etcd
+    group: etcd
+    mode: 0600
+  loop:
+      - ca.crt
+      - ca.key
+      - ca.srl
+
+- name: "Copy certs crt on hosts"
+  copy:
+    src: "/tmp/.artifacts/{{ item.hostname }}.crt"
+    remote_src: False
+    dest: /etc/etcd/ssl/{{ item.hostname }}.crt
+    owner: etcd
+    group: etcd
+    mode: 0600
+  loop: "{{ etcd_hosts }}"
+  
+- name: "Copy over the `etcd` member key"
+  copy:
+    src: "/tmp/.artifacts/{{ inventory_hostname }}.key"
+    remote_src: False
+    dest: "/etc/etcd/ssl/{{ inventory_hostname }}.key"
+    owner: etcd
+    group: etcd
+    mode: 0600
+  
+- name: "Create and copy server req"
+  become: False
+  template:
+          src: etcd.conf.yaml.j2
+          dest: "/tmp/.artifacts/{{ item.hostname }}.etcd.conf.yaml"
+  loop: "{{ etcd_hosts }}"
+  delegate_to: localhost
+  
+- name: "Copy over the `etcd` member certificate"
+  copy:
+    src: "/tmp/.artifacts/{{ inventory_hostname }}.etcd.conf.yaml"
+    remote_src: False
+    dest: "/etc/etcd/etcd.conf.yaml"
+    owner: etcd
+    group: etcd
+    mode: 0600
+
+- name: "Recreate service"
+  template:
+     src: etcd.service.j2
+     dest: /etc/systemd/system/etcd.service
+     owner: root
+     group: root
+     mode: 0644
+  notify: etcd reload
+
+- name: "Clean .arifacts"
+  file:
+        path: /tmp/.artifacts
+        state: absent
+  delegate_to: localhost
+  tags: clean

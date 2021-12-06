@@ -1,0 +1,23 @@
+name: {{ item.hostname }}
+data-dir: "/var/lib/etcd/"
+listen-peer-urls: https://localhost:2380,https://{{ item.ip }}:2380
+listen-client-urls: https://localhost:2379,https://{{ item.ip }}:2379
+initial-advertise-peer-urls: https://{{ item.ip }}:2380
+advertise-client-urls: https://{{ item.ip }}:2379
+
+initial-cluster-state: 'new'
+initial-cluster: {% for i in etcd_hosts %}{{  i.hostname }}=https://{{ i.ip }}:2380{% if not loop.last %},{% endif %}{% endfor %}
+
+client-transport-security:
+  cert-file: /etc/etcd/ssl/{{ item.hostname }}.crt
+  key-file: /etc/etcd/ssl/{{ item.hostname }}.key
+  trusted-ca-file: /etc/etcd/ssl/ca.crt
+
+peer-transport-security:
+  cert-file: /etc/etcd/ssl/{{ item.hostname }}.crt
+  key-file: /etc/etcd/ssl/{{ item.hostname }}.key
+  trusted-ca-file: /etc/etcd/ssl/ca.crt
+
+election-timeout: 5000
+heartbeat-interval: 250
+proxy: 'off'
