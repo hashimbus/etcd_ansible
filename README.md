@@ -22,3 +22,14 @@ ssh_address:
 Write hostname to /etc/hosts and 
 enable ufw firewall, 
 open 22 port(vars) and 2379:2380 (between nodes)
+
+**Role etcd_ssh:**
+Write vars/ (etcd hostname + ip) may copy from etcd_config
+etcd_hosts:
+        - hostname: 
+          ip: 
+          
+Role create directory /tmp/.artifacts/ on localhost
+Create and copy certs (crt+key) ca and hosts
+Copy certs on hosts
+(inventory_hostnames must be like match names hosts)
